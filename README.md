@@ -1,5 +1,5 @@
 
-# 🛡️ Microsoft Sentinel — Brute Force Detection & Account Monitoring Home Lab
+# 🛡️ A self-built enterprise SOC environment simulating real-world detection and response scenarios, created while studying for the Microsoft SC-200 certification.
 
 ![Microsoft Sentinel](https://img.shields.io/badge/Microsoft%20Sentinel-SIEM-blue?style=for-the-badge&logo=microsoft)
 ![KQL](https://img.shields.io/badge/KQL-Query%20Language-orange?style=for-the-badge)
