@@ -13,151 +13,155 @@ This project demonstrates the skills expected of a **Security Operations Center 
 
 ---
 
-## 🎯 Objectives
+## 🎯 Objectives and Roadmap
 
-- Deploy and configure **Microsoft Sentinel** with a Log Analytics Workspace
-- Ingest **Windows Security Event Logs** into Sentinel
-- Write **KQL queries** to detect attack patterns from raw log data
-- Simulate a brute force attack and trace the full attack chain:
-  1. Multiple failed login attempts
-  2. Successful login after brute force
-  3. Attacker creates a backdoor account
-  4. Attacker escalates privileges by adding account to Administrators group
+# SOC Lab Objective: Simulated Intrusion Chain
 
----
+## Goal
 
-## 🧰 Tools & Technologies
+Simulate a realistic, multi-stage intrusion against the lab domain (`soclab.local`) from an external attacker machine (Kali Linux, intentionally kept outside the domain trust), and demonstrate detection, investigation, and response using Microsoft Defender for Endpoint, Microsoft Defender for Identity, and Microsoft Sentinel.
 
-| Tool | Purpose |
-|------|---------|
-| Microsoft Azure | Cloud environment hosting the lab |
-| Microsoft Sentinel | SIEM/SOAR platform for detection and response |
-| Log Analytics Workspace | Central log ingestion and querying |
-| Windows Security Event Logs | Primary data source for all detections |
-| KQL (Kusto Query Language) | Query language used to detect threats |
+Rather than testing isolated detections, this lab follows a single continuous attack narrative — mirroring how a real intrusion actually unfolds — with each stage mapped to the **MITRE ATT&CK** framework.
 
 ---
 
-## 📋 Windows Security Event IDs
+## Attack Chain Overview
 
-These are the specific Windows Event IDs monitored in this lab:
-
-| Event ID | Description | Why It Matters |
-|----------|-------------|----------------|
-| **4625** | Failed logon attempt | Core indicator of brute force activity |
-| **4624** | Successful logon | Used to detect a successful compromise after failures |
-| **4720** | A user account was created | Attackers create backdoor accounts for persistence |
-| **4732** | A member was added to the local Administrators group | Indicates privilege escalation |
-
----
-
-## 🔍 KQL Detection Queries
-
-### 🔴 1. Brute Force Detection — Multiple Failed Logins (Event ID 4625)
-Detects any account receiving **10 or more failed login attempts within 1 hour**.
-
-```kql
-SecurityEvent
-| where EventID == 4625
-| summarize FailedAttempts = count() by Account, IpAddress, bin(TimeGenerated, 1h)
-| where FailedAttempts >= 10
-| order by FailedAttempts desc
+```
+Kali Linux (attacker, untrusted)
+      │
+      ▼
+[1] Brute Force ──────────► [2] Execution ──────────► [3] Persistence & Privilege Escalation
+                                                              │
+      ┌───────────────────────────────────────────────────────┘
+      ▼
+[4] Credential Access (LSASS + Kerberoasting) ──► [5] Lateral Movement ──► [6] Defense Evasion
 ```
 
 ---
 
-### 🟡 2. Successful Login Following Multiple Failures (Event ID 4625 → 4624)
-Detects a **successful login from an account that previously had 5+ failed attempts** — a strong indicator of a successful brute force compromise.
+## Stage-by-Stage Breakdown
 
-```kql
-let FailedLogins = SecurityEvent
-| where EventID == 4625
-| summarize FailCount = count() by Account, IpAddress
-| where FailCount >= 5;
-SecurityEvent
-| where EventID == 4624
-| join kind=inner FailedLogins on Account
-| project TimeGenerated, Account, IpAddress, FailCount
-```
+| # | Stage | MITRE ATT&CK Technique | Tactic | Target | Detection Source |
+|---|-------|------------------------|--------|--------|-------------------|
+| 1 | Brute-force login attempts, followed by a successful login | **T1110** – Brute Force | Credential Access → Initial Access | `testtarget` decoy account on WIN-SERVER | Defender for Identity (`IdentityLogonEvents`) |
+| 2 | Suspicious PowerShell / living-off-the-land execution | **T1059.001** – PowerShell | Execution | WIN-SERVER | Defender for Endpoint (`DeviceProcessEvents`) |
+| 3 | Backdoor account creation, then added to Administrators group | **T1136** – Create Account / **T1098** – Account Manipulation | Persistence / Privilege Escalation | WIN-SERVER (AD) | Defender for Identity (`IdentityDirectoryEvents`) |
+| 4a | LSASS memory dumping to harvest cached credentials | **T1003.001** – OS Credential Dumping: LSASS Memory | Credential Access | WIN-SERVER | Defender for Endpoint |
+| 4b | Kerberoasting — bulk service ticket requests for offline cracking | **T1558.003** – Kerberoasting | Credential Access | WIN-SERVER (AD) | Defender for Identity |
+| 5 | Lateral movement using harvested credentials (Pass-the-Hash) | **T1550.002** – Pass the Hash | Lateral Movement | WIN-11PRO | Defender for Endpoint + Identity |
+| 6 | Defense evasion — clearing logs / tampering with security tooling | **T1070.001** – Clear Windows Event Logs / **T1562.001** – Impair Defenses | Defense Evasion | WIN-SERVER | Defender for Endpoint |
 
 ---
 
-### 🟠 3. New User Account Created (Event ID 4720)
-Monitors for **any new user account creation**, which attackers use to establish persistence.
+## Why This Structure
 
-```kql
-SecurityEvent
-| where EventID == 4720
-| project TimeGenerated, Account, SubjectUserName, Computer
-| order by TimeGenerated desc
-```
+- **Realistic ordering** — this is the sequence a genuine attacker typically follows: get in, establish a foothold, escalate, harvest more credentials, spread, then cover their tracks.
+- **Dual-sensor coverage** — the chain deliberately includes both identity-layer attacks (brute force, Kerberoasting, account manipulation) and endpoint-layer attacks (PowerShell abuse, LSASS dumping, log tampering), demonstrating why both Defender for Endpoint and Defender for Identity are needed together rather than either alone.
+- **Safe by design** — all attacks are run against a dedicated decoy account (`testtarget`), never against real lab accounts, and entirely within an isolated lab network with no production impact.
 
 ---
 
-### 🔴 4. User Added to Administrators Group (Event ID 4732)
-Detects **privilege escalation** — when any account is added to the local Administrators group.
+## Environment
 
-```kql
-SecurityEvent
-| where EventID == 4732
-| project TimeGenerated, Account, MemberName, SubjectUserName, Computer
-| order by TimeGenerated desc
-```
+| Machine | Role | Notes |
+|---|---|---|
+| **WIN-SERVER** | Domain Controller (`soclab.local`) | Windows Server 2025, Server Core. Defender for Endpoint + Defender for Identity |
+| **WIN-11PRO** | Domain-joined workstation | Windows 11 Enterprise. Defender for Endpoint |
+| **BeticoKali** | Attacker machine | Kali Linux, intentionally outside the domain trust, no Defender agent |
 
 ---
 
-## 🔗 Attack Chain Simulated
+## 🚀 Roadmap
 
-This lab simulates the following attack progression:
-
-```
-[Attacker] 
-    │
-    ├── 1. Runs brute force against target (Event ID 4625 — repeated failures)
-    │
-    ├── 2. Guesses correct password (Event ID 4624 — successful login)
-    │
-    ├── 3. Creates new backdoor user account (Event ID 4720)
-    │
-    └── 4. Adds backdoor account to Administrators group (Event ID 4732)
-```
-
-Each step in this chain is detectable using the KQL queries above inside Microsoft Sentinel.
+### ✅ Foundation
+Lab infrastructure built: isolated 3-VM domain network, Microsoft 365 E5 licensing, Azure + Microsoft Sentinel, Defender for Endpoint (WIN-SERVER & WIN-11PRO), Defender for Identity (WIN-SERVER), Sentinel connected to Defender XDR.
 
 ---
 
-## 📁 Repository Structure
+### Stage 1 — Initial Access: Brute Force
+**Technique:** T1110 – Brute Force | **Detection:** Defender for Identity (`IdentityLogonEvents`)
 
-```
-📦 sc-200-sentinel-lab
- ┣ 📂 kql-queries
- ┃ ┣ 📄 brute-force-detection.kql
- ┃ ┣ 📄 successful-login-after-failure.kql
- ┃ ┣ 📄 account-creation.kql
- ┃ ┗ 📄 privilege-escalation.kql
- ┣ 📂 screenshots
- ┃ ┗ 📄 (Sentinel dashboards, query results, incidents)
- ┗ 📄 README.md
-```
+Simulate repeated failed logon attempts against a decoy account (`testtarget`) from Kali, followed by a successful login, and trace the resulting alert in Defender for Identity.
+
+`Screenshot: attack in progress →`
+`Screenshot: Defender for Identity alert →`
+`Screenshot: KQL query + results →`
 
 ---
 
-## 📸 Screenshots
-> *(To be added — Sentinel workspace, query results, triggered alerts, and incidents)*
+### Stage 2 — Execution: Suspicious PowerShell / LOLBins
+**Technique:** T1059.001 – PowerShell | **Detection:** Defender for Endpoint (`DeviceProcessEvents`)
+
+Execute a suspicious PowerShell command (e.g. encoded command / download cradle) on WIN-SERVER post-compromise, and trace the resulting Defender for Endpoint alert.
+
+`Screenshot: command executed →`
+`Screenshot: Defender for Endpoint alert →`
+`Screenshot: KQL query + results →`
 
 ---
 
-## 🚀 Status & Roadmap
+### Stage 3 — Persistence & Privilege Escalation: Backdoor Account
+**Technique:** T1136 – Create Account / T1098 – Account Manipulation | **Detection:** Defender for Identity (`IdentityDirectoryEvents`)
 
-- [x] Define detection use cases and Event IDs
-- [x] Write KQL detection queries
-- [ ] Deploy Azure environment and configure Sentinel
-- [ ] Ingest Windows Security Event Logs
-- [ ] Run and validate KQL queries against live data
-- [ ] Create Sentinel Analytics Rules to auto-trigger alerts
-- [ ] Document screenshots and findings
+Create a new AD user account and add it to the Administrators group, simulating an attacker establishing persistent, privileged access.
+
+`Screenshot: account creation →`
+`Screenshot: group membership change alert →`
+`Screenshot: KQL query + results →`
 
 ---
+
+### Stage 4a — Credential Access: LSASS Dumping
+**Technique:** T1003.001 – OS Credential Dumping: LSASS Memory | **Detection:** Defender for Endpoint
+
+Dump LSASS memory to harvest additional cached credentials, and trace the resulting Defender for Endpoint alert.
+
+`Screenshot: attack in progress →`
+`Screenshot: Defender for Endpoint alert →`
+`Screenshot: KQL query + results →`
+
+---
+
+### Stage 4b — Credential Access: Kerberoasting
+**Technique:** T1558.003 – Kerberoasting | **Detection:** Defender for Identity
+
+Request service tickets in bulk for offline cracking, and trace the resulting Defender for Identity alert.
+
+`Screenshot: attack in progress →`
+`Screenshot: Defender for Identity alert →`
+`Screenshot: KQL query + results →`
+
+---
+
+### Stage 5 — Lateral Movement: Pass-the-Hash
+**Technique:** T1550.002 – Pass the Hash | **Detection:** Defender for Endpoint + Identity
+
+Use harvested credentials to authenticate from WIN-11PRO without the plaintext password, simulating an attacker spreading across the domain.
+
+`Screenshot: attack in progress →`
+`Screenshot: alert(s) →`
+`Screenshot: KQL query + results →`
+
+---
+
+### Stage 6 — Defense Evasion: Log Tampering
+**Technique:** T1070.001 – Clear Windows Event Logs / T1562.001 – Impair Defenses | **Detection:** Defender for Endpoint
+
+Attempt to clear event logs or disable security tooling to cover tracks, and trace the resulting alert.
+
+`Screenshot: attack in progress →`
+`Screenshot: Defender for Endpoint alert →`
+`Screenshot: KQL query + results →`
+
+
+
+
+
+
+
+
+
 
 ## 👤 About This Project
 
@@ -172,5 +176,4 @@ Feel free to reach out if you have questions or feedback!
 
 ---
 
-## 📄 License
-This project is for educational purposes only.
+
