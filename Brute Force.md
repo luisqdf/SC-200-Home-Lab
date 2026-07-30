@@ -30,18 +30,8 @@ The wordlist contained 101 passwords — 100 incorrect, with the correct passwor
 
 The activity was detected in Microsoft Sentinel via a scheduled analytics rule querying the `SecurityEvent` table. The rule flags any account exceeding a threshold of failed logons within the query window, and returns the successful logon count, source IP addresses, and the exact attack window as supporting context:
 
-```kusto
-SecurityEvent
-| where EventID in (4624, 4625)
-| where Account has "testtarget"
-| summarize FailedLogons     = countif(EventID == 4625),
-            SuccessfulLogons = countif(EventID == 4624),
-            SourceIPs        = make_set(IpAddress),
-            FirstAttempt     = min(TimeGenerated),
-            LastAttempt      = max(TimeGenerated)
-    by Computer
-| where FailedLogons > 5
-```
+<img width="1980" height="1298" alt="image" src="https://github.com/user-attachments/assets/557abf1e-a85b-4490-b82b-6bc5b2a128bc" />
+
 
 | Setting | Value |
 |---|---|
