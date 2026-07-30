@@ -1,63 +1,45 @@
 # Stage 1 — Brute-Force Attack Detection (T1110)
 
 **Tactic:** Credential Access → Initial Access
-**Technique:** [T1110 – Brute Force](https://attack.mitre.org/techniques/T1110/)
-**Detection source:** Microsoft Sentinel scheduled analytics rule on the `SecurityEvent` table (Event IDs 4625 / 4624), collected from the domain controller via the Azure Monitor Agent and a Data Collection Rule.
-
----
+**Technique:** T1110 – Brute Force
+**Detection source:** Microsoft Sentinel scheduled analytics rule on the `SecurityEvent` table (Event IDs 4625 and 4624), collected from the domain controller via the Azure Monitor Agent and a Data Collection Rule.
 
 ## Objective
 
 Simulate a credential brute-force attack against a decoy domain account and detect the resulting failed-logon pattern in Microsoft Sentinel.
 
----
-
 ## Attack Simulation
 
-From a Kali Linux attacker node (`192.168.50.20`), a brute-force attack was launched against the domain controller (`WIN-SERVER`, `192.168.50.10`) targeting the decoy account `testtarget`, using NetExec over SMB:
+The attack was run from a Kali node (`192.168.50.20`) against the domain controller `WIN-SERVER` (`192.168.50.10`), targeting the decoy account `testtarget` over SMB with NetExec:
 
 ```bash
 netexec smb 192.168.50.10 -u testtarget -p ~/wordlist_big.txt
 ```
 
-The wordlist contained 101 passwords — 100 incorrect, with the correct password placed last — simulating a realistic attack that eventually succeeds. This generated approximately 100 failed logon events (Event ID 4625) followed by one successful logon (Event ID 4624).
-
-<img width="900" alt="NetExec brute-force run against the domain controller" src="https://github.com/user-attachments/assets/b4de04cf-89fe-485d-a640-f1a273663e1d" />
-
-
-
-
----
+The wordlist held 101 passwords — 100 wrong, with the correct one last — so the run produces a long string of failures ending in a single success. That generated roughly 100 failed logons (4625) followed by one successful logon (4624).
 
 ## Detection
 
-The activity was detected in Microsoft Sentinel via a scheduled analytics rule querying the `SecurityEvent` table. The rule flags any account exceeding a threshold of failed logons within the query window, and returns the successful logon count, source IP addresses, and the exact attack window as supporting context:
+Sentinel picked this up through a scheduled analytics rule on the `SecurityEvent` table. The rule counts failed logons per host, and only fires when the count crosses the threshold. It also returns the success count, the source IPs, and the first/last timestamps so there's useful context on the alert itself rather than just a number:
 
-<img width="1946" height="1272" alt="image" src="https://github.com/user-attachments/assets/566383f0-daf6-4430-a4fa-dabe174ace75" />
+```kusto
+SecurityEvent
+| where EventID in (4624, 4625)
+| where Account has "testtarget"
+| summarize FailedLogons     = countif(EventID == 4625),
+            SuccessfulLogons = countif(EventID == 4624),
+            SourceIPs        = make_set(IpAddress),
+            FirstAttempt     = min(TimeGenerated),
+            LastAttempt      = max(TimeGenerated)
+    by Computer
+| where FailedLogons > 5
+```
 
-
-
-| Setting | Value |
-|---|---|
-| Rule type | Scheduled analytics rule |
-| Run frequency | Every 5 minutes |
-| Lookback period | Last 1 hour |
-| Threshold | Trigger if query returns more than 0 results |
-| Severity | Medium |
-| MITRE mapping | T1110 – Brute Force (Credential Access) |
-
-<!-- Add your analytics rule and workbook screenshots here, each on its own line -->
-
----
+The rule runs every 5 minutes over a 1-hour lookback, at Medium severity, mapped to T1110.
 
 ## Investigation and Triage
 
-### True-Positive Determination
-
-The raw evidence was pulled to validate the alert:
-
-<img width="2012" height="630" alt="image" src="https://github.com/user-attachments/assets/33d10408-13e4-41f2-8c4e-92f0bcd22079" />
-
+To validate the alert I pulled the raw events in the order they happened:
 
 ```kusto
 SecurityEvent
@@ -67,31 +49,25 @@ SecurityEvent
 | order by TimeGenerated asc
 ```
 
-| Indicator | Observation | Assessment |
-|---|---|---|
-| Time compression | ~100 failures within seconds | Automated tool, not human error |
-| Source | Single IP (`192.168.50.20`) | Targeted attack from one host |
-| Outcome | Failures followed by one success (4624) | Account compromised |
+The pattern is clearly automated: around 100 failures land within a few seconds, all from a single IP, and a successful logon follows immediately after. A human mistyping a password doesn't produce that. On that basis I called it a true positive — and the trailing success means the account wasn't just attacked, it was taken.
 
-**Verdict: True Positive.** The volume, speed, and single-source pattern are consistent with an automated brute-force tool, and the trailing successful logon indicates the account was compromised.
+### Source IP
 
-### Enrichment — Source IP
-
-The source address `192.168.50.20` falls within the private range `192.168.0.0/16` and is therefore internal to the environment. An internal source raises severity rather than lowering it: it indicates the attacker is already operating inside the network — a compromised host or a malicious insider — rather than probing from the internet.
+The source, `192.168.50.20`, is in the `192.168.0.0/16` private range, so it's internal. That's worse than an external hit, not better — it means whoever's doing this is already inside the network, either from a compromised host or an insider, rather than knocking from the internet. If the source had been a public address, the triage would shift toward IP reputation and geolocation, and toward the question of whether that service should be internet-facing at all.
 
 ### Containment
 
-Because a successful logon occurred, `testtarget` is treated as compromised and disabled to prevent further use while the investigation continues:
+Since a login succeeded, I treated `testtarget` as compromised and disabled it to stop any further use while I looked into it:
 
 ```powershell
 Disable-ADAccount -Identity testtarget
 ```
 
-In a production environment, containment weighs attacker disruption against business impact; a critical service account might be reset and monitored rather than hard-disabled.
+In a real environment this isn't automatic — disabling a critical service account can cause an outage, so the call sometimes is to reset and monitor instead. For a decoy account it's a clean disable.
 
 ### Scope
 
-The account's activity was reviewed to determine whether the compromise spread to other systems:
+I then checked whether the account had touched anything beyond the DC:
 
 ```kusto
 SecurityEvent
@@ -100,33 +76,20 @@ SecurityEvent
 | summarize Machines = make_set(Computer), Events = count() by EventID
 ```
 
-During enumeration, `testtarget` was found to hold local administrator rights on the domain controller (NetExec `--shares` returned the `ADMIN$` and `C$` administrative shares). This is a significant misconfiguration: a single guessed password provides a direct path to full domain compromise and would enable remote code execution via PsExec, WMI, or WinRM.
+Activity stayed on `WIN-SERVER`, so no lateral movement. The more interesting finding came from enumeration: `testtarget` could reach the `ADMIN$` and `C$` shares on the DC (via NetExec `--shares`), which means it holds local admin there. That's a serious problem on its own — a single guessed password on that account is a straight line to full control of the DC, and would open the door to remote execution through PsExec, WMI, or WinRM.
 
 ### Remediation
 
-- Reset the `testtarget` password and enforce a strong password policy.
-- Remove `testtarget` from the local Administrators group on the domain controller. Standard user accounts should never hold administrative rights on a domain controller.
-- Implement an account lockout policy to slow future brute-force attempts.
-
----
+- Reset the password and enforce a stronger password policy.
+- Remove `testtarget` from local Administrators on the DC. A standard user has no business holding admin on a domain controller, and fixing that removes the real risk here.
+- Add an account lockout policy so a run like this trips a lockout well before 100 attempts.
 
 ## Incident Closure
 
-| Field | Value |
-|---|---|
-| Classification | True Positive |
-| Severity | Medium (elevated by internal source and administrative misconfiguration) |
-| Scope | Limited to `WIN-SERVER`; no confirmed lateral movement |
-| Business impact | None (controlled lab; decoy account) |
-| Containment | Account disabled |
-| Remediation | Password reset; administrative rights removed; lockout policy recommended |
-| Status | Resolved / Monitoring |
+Classified as a true positive, Medium severity — the severity nudged up by the internal source and the admin misconfiguration rather than the brute force alone. Scope stayed limited to `WIN-SERVER` with no lateral movement, and there was no real business impact since this was a lab decoy. Contained by disabling the account; remediation covered the password reset, removing the admin rights, and recommending a lockout policy. Closed as resolved, with monitoring.
 
----
+## Notes
 
-## Key Takeaways
-
-- A brute force is defined by the flood of failed logons (4625); the trailing success (4624) is what escalates it from an attempt to a compromise.
-- Windows records the same account under different formats (`SOCLAB\testtarget` versus `soclab.local\testtarget`) depending on whether NTLM or Kerberos handled the request. Detections must tolerate this by matching on the username or grouping on a stable field such as `Computer`, rather than assuming a single spelling.
-- An internal attack source is more concerning than an external one, as it indicates the attacker is already inside the network.
-- The most significant finding was not the brute force itself but the over-privileged decoy account, surfaced during the scoping step.
+- The brute force is the failures (4625); the single success (4624) is what turns it from an attempt into a compromise. Worth keeping those two separate when reasoning about severity.
+- The same account shows up as both `SOCLAB\testtarget` and `soclab.local\testtarget` depending on whether NTLM or Kerberos handled the request. Grouping on `Computer` (or matching the username with `has`) avoids the rule silently splitting one attack across two spellings — which cost me time before I caught it.
+- The headline finding wasn't the brute force. It was the over-privileged decoy account, and that only surfaced because I ran the scope check instead of closing the alert at "true positive."
