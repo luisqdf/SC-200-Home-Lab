@@ -18,9 +18,12 @@ From a Kali Linux attacker node (`192.168.50.20`), a brute-force attack was laun
 
 ```bash
 netexec smb 192.168.50.10 -u testtarget -p ~/wordlist_big.txt
+
+<img width="1540" height="830" alt="image" src="https://github.com/user-attachments/assets/b4de04cf-89fe-485d-a640-f1a273663e1d" />
+
 ```
 
-The wordlist contained **101 passwords** — 100 incorrect, with the correct password placed last — simulating a realistic attack that eventually succeeds. This generated ~100 **failed logon events (Event ID 4625)** followed by one **successful logon (Event ID 4624)**.
+The wordlist contained **101 passwords** — 100 incorrect, with the correct password placed last. Simulating a realistic attack that eventually succeeds. This generated ~100 **failed logon events (Event ID 4625)** followed by one **successful logon (Event ID 4624)**.
 
 ![Attack executed from Kali via NetExec](images/01-netexec-attack.png)
 *NetExec brute-force run against the domain controller over SMB.*
