@@ -44,7 +44,7 @@ Kali Linux (attacker, untrusted)
 
 | # | Stage | MITRE ATT&CK Technique | Tactic | Target | Detection Source |
 |---|-------|------------------------|--------|--------|-------------------|
-| 1 | Brute-force login attempts, followed by a successful login | **T1110** – Brute Force | Credential Access → Initial Access | `testtarget` decoy account on WIN-SERVER | Defender for Identity (`IdentityLogonEvents`) |
+| 1 | Brute-force login attempts, followed by a successful login | **T1110** – Brute Force | Credential Access → Initial Access | `testtarget` decoy account on WIN-SERVER | Microsoft Sentinel — Scheduled Analytics Rule on the SecurityEvent table (EventIDs 4625/4624), collected via Azure Monitor Agent + DCR |
 | 2 | Suspicious PowerShell / living-off-the-land execution | **T1059.001** – PowerShell | Execution | WIN-SERVER | Defender for Endpoint (`DeviceProcessEvents`) |
 | 3 | Backdoor account creation, then added to Administrators group | **T1136** – Create Account / **T1098** – Account Manipulation | Persistence / Privilege Escalation | WIN-SERVER (AD) | Defender for Identity (`IdentityDirectoryEvents`) |
 | 4a | LSASS memory dumping to harvest cached credentials | **T1003.001** – OS Credential Dumping: LSASS Memory | Credential Access | WIN-SERVER | Defender for Endpoint |
