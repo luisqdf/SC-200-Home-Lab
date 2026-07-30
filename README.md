@@ -74,11 +74,6 @@ Kali Linux (attacker, untrusted)
 
 ## 🚀 Roadmap
 
-### ✅ Foundation
-Lab infrastructure built: isolated 3-VM domain network, Microsoft 365 E5 licensing, Azure + Microsoft Sentinel, Defender for Endpoint (WIN-SERVER & WIN-11PRO), Defender for Identity (WIN-SERVER), Sentinel connected to Defender XDR.
-
----
-
 ### Stage 1 — Initial Access: Brute Force
 **Technique:** T1110 – Brute Force | **Detection:** Defender for Identity (`IdentityLogonEvents`)
 
@@ -160,17 +155,6 @@ Attempt to clear event logs or disable security tooling to cover tracks, and tra
 
 
 
-
-
-
-## 👤 About This Project
-
-This lab is part of my cybersecurity portfolio as I work toward the **Microsoft SC-200 certification**. It is designed to showcase hands-on skills in:
-
-- Cloud-based SIEM configuration
-- Threat detection using real Windows event log data
-- KQL query writing for security investigations
-- Understanding attacker behavior and the attack lifecycle
 
 Feel free to reach out if you have questions or feedback!
 
