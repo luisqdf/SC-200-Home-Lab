@@ -24,7 +24,7 @@ The wordlist contained 101 passwords — 100 incorrect, with the correct passwor
 
 <img width="900" alt="NetExec brute-force run against the domain controller" src="https://github.com/user-attachments/assets/b4de04cf-89fe-485d-a640-f1a273663e1d" />
 
-<img width="2846" height="1318" alt="image" src="https://github.com/user-attachments/assets/7a198f7d-525e-45e5-8ec0-64ea752ed6be" />
+
 
 
 ---
