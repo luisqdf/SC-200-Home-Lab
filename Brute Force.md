@@ -62,6 +62,9 @@ SecurityEvent
 
 The raw evidence was pulled to validate the alert:
 
+<img width="2012" height="630" alt="image" src="https://github.com/user-attachments/assets/33d10408-13e4-41f2-8c4e-92f0bcd22079" />
+
+
 ```kusto
 SecurityEvent
 | where EventID in (4624, 4625)
