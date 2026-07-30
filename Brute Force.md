@@ -24,13 +24,17 @@ The wordlist contained 101 passwords — 100 incorrect, with the correct passwor
 
 <img width="900" alt="NetExec brute-force run against the domain controller" src="https://github.com/user-attachments/assets/b4de04cf-89fe-485d-a640-f1a273663e1d" />
 
+<img width="2846" height="1318" alt="image" src="https://github.com/user-attachments/assets/7a198f7d-525e-45e5-8ec0-64ea752ed6be" />
+
+
 ---
 
 ## Detection
 
 The activity was detected in Microsoft Sentinel via a scheduled analytics rule querying the `SecurityEvent` table. The rule flags any account exceeding a threshold of failed logons within the query window, and returns the successful logon count, source IP addresses, and the exact attack window as supporting context:
 
-<img width="1980" height="1298" alt="image" src="https://github.com/user-attachments/assets/557abf1e-a85b-4490-b82b-6bc5b2a128bc" />
+<img width="1946" height="1272" alt="image" src="https://github.com/user-attachments/assets/566383f0-daf6-4430-a4fa-dabe174ace75" />
+
 
 
 | Setting | Value |
