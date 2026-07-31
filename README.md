@@ -24,6 +24,8 @@ Kali Linux (attacker, untrusted)
 ▼
 [4] Credential Access (LSASS + Kerberoasting) ──► [5] Lateral Movement ──► [6] Defense Evasion
 
+
+
 ## Stage-by-Stage Breakdown
 
 | # | Stage | MITRE ATT&CK Technique | Tactic | Target | Detection Source |
