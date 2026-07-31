@@ -79,7 +79,7 @@ Kali Linux (attacker, untrusted)
 
 Simulate repeated failed logon attempts against a decoy account (`testtarget`) from Kali, followed by a successful login, and trace the resulting alert in Defender for Identity.
 
-<img width="1524" height="826" alt="image" src="https://github.com/user-attachments/assets/f2276635-aa1c-4e53-bd24-3eeffb298857" />
+
 
 
 ---
