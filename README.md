@@ -16,6 +16,15 @@ Rather than testing isolated detections, the lab follows a single continuous att
 
 ## Attack Chain Overview
 
+Kali Linux (attacker, untrusted)
+│
+▼
+[1] Brute Force ──► [2] Execution ──► [3] Persistence & Privilege Escalation
+│
+┌─────────────────────────────────────────┘
+▼
+[4] Credential Access (LSASS + Kerberoasting) ──► [5] Lateral Movement ──► [6] Defense Evasion
+
 ## Stage-by-Stage Breakdown
 
 | # | Stage | MITRE ATT&CK Technique | Tactic | Target | Detection Source |
@@ -47,10 +56,7 @@ Safe by design — all attacks are run against a dedicated decoy account (testta
 ## Roadmap
 
 ### Stage 1 — Initial Access: Brute Force
-Technique: T1110 – Brute Force | Detection: Microsoft Sentinel (SecurityEvent, Event IDs 4625/4624)
-
-Simulate repeated failed logon attempts against a decoy account (testtarget) from Kali, followed by a successful login, and trace the resulting detection in Sentinel.
-
+Technique: T1110 – Brute Force | Detection: Microsoft Sentinel (SecurityEvent, Event IDs 4625/4624). Status: Complete — full writeup below.
 
 ### Stage 2 — Execution: Suspicious PowerShell / LOLBins
 Technique: T1059.001 – PowerShell | Detection: Defender for Endpoint (DeviceProcessEvents)
@@ -81,3 +87,4 @@ Use harvested credentials to authenticate from WIN-11PRO without the plaintext p
 Technique: T1070.001 – Clear Windows Event Logs / T1562.001 – Impair Defenses | Detection: Defender for Endpoint
 
 Attempt to clear event logs or disable security tooling to cover tracks, and trace the resulting alert.
+
