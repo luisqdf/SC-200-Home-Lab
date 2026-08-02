@@ -8,6 +8,8 @@ This home lab is part of my preparation for the Microsoft SC-200: Microsoft Secu
 
 The project demonstrates core SOC analyst skills like threat detection, log analysis, and incident response. These are tested in the SC-200 exam and used in real SOC work.
 
+Red team tooling such as Kali Linux, NetExec, and the Impacket suite is used only to generate realistic attack telemetry. This is a defensive project at heart (Blue team). The goal is not the attack itself, but observing how Microsoft Defender and Sentinel detect, alert on, and respond to each technique once it reaches the environment.
+
 ## Goal
 
 Simulate a realistic, multi-stage intrusion against the lab domain (soclab.local) from an attacker machine (Kali Linux, kept outside the domain trust), and demonstrate detection, investigation, and response using Microsoft Defender for Endpoint, Microsoft Defender for Identity, and Microsoft Sentinel.
