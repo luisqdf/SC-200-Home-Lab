@@ -1,4 +1,4 @@
-# Blocked Account Creation on a Domain Controller
+# Account Creation on a Domain Controller
 
 ### Detection and Triage with Microsoft Defender for Endpoint / SENTINEL
 
