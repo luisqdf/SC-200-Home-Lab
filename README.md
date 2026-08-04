@@ -17,14 +17,20 @@ Simulate a realistic, multi-stage intrusion against the lab domain (soclab.local
 Rather than testing isolated detections, the lab follows a single continuous attack narrative, the way a real intrusion actually unfolds, with each stage mapped to the MITRE ATT&CK framework.
 
 ## Attack Chain Overview
-Kali Linux (attacker, untrusted)
-│
-▼
-[1] Brute Force ──► [2] Execution ──► [3] Persistence & Privilege Escalation
-│
-┌─────────────────────────────────────────┘
-▼
-[4] Credential Access (LSASS + Kerberoasting) ──► [5] Lateral Movement ──► [6] Defense Evasion
+
+```
+BeticoKali (Kali Linux, attacker, outside the domain)
+        │
+        │  attacks over the network
+        ▼
+WIN-SERVER (Domain Controller, soclab.local)
+        │
+        ▼
+[1] Brute Force
+[2] Suspicious PowerShell
+[3] Account Creation
+[4] Log Clearing
+```
 
 
 
