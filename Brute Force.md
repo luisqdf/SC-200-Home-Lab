@@ -13,7 +13,7 @@ netexec smb 192.168.50.10 -u testtarget -p ~/wordlist_big.txt
 
 The wordlist had 101 passwords — 100 wrong, the correct one last. So the run makes about 100 failed logons (4625) and one success (4624) at the end.
 
-<!-- screenshot: netexec run -->
+
 
 ## Detection
 
@@ -34,8 +34,7 @@ SecurityEvent
 
 Runs every 5 minutes, 1-hour lookback, Medium severity.
 
-<!-- screenshot: analytics rule -->
-<!-- screenshot: workbook spike -->
+
 
 ## Triage
 
@@ -54,7 +53,7 @@ SecurityEvent
 
 About 100 failures in a few seconds, all from one IP, then a success. That's automated, not a person mistyping. True positive, and the success means the account was compromised, not just hit.
 
-<!-- screenshot: raw logon events -->
+
 
 ## Source IP
 
@@ -92,7 +91,7 @@ SecurityEvent
 
 Everything stayed on WIN-SERVER, no lateral movement.
 
-<!-- screenshot: scope query result -->
+
 
 The bigger find came from enumeration: testtarget can reach the ADMIN$ and C$ shares, so it has local admin on the DC. That's the real problem , and one guessed password on that account means full control of the domain controller.
 
@@ -102,6 +101,4 @@ The bigger find came from enumeration: testtarget can reach the ADMIN$ and C$ sh
 - Remove testtarget from local Administrators on the DC.
 - Add a lockout policy so this trips well before 100 tries.
 
-## Closure
 
-True positive, Medium severity, contained to WIN-SERVER, no lateral movement, no real impact (lab decoy). Account disabled, admin rights to be removed, lockout policy recommended. Closed — monitoring.
