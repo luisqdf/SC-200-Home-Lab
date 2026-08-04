@@ -30,15 +30,13 @@ Kali Linux (attacker, untrusted)
 
 ## Stage-by-Stage Breakdown
 
+
 | # | Stage | MITRE ATT&CK Technique | Tactic | Target | Detection Source |
-|---|-------|------------------------|--------|--------|-------------------|
-| 1 | Brute-force login attempts, followed by a successful login | T1110, Brute Force | Credential Access to Initial Access | testtarget decoy account on WIN-SERVER | Microsoft Sentinel, scheduled analytics rule on the SecurityEvent table (Event IDs 4625/4624), collected via Azure Monitor Agent and DCR |
-| 2 | Suspicious PowerShell / living-off-the-land execution | T1059.001, PowerShell | Execution | WIN-SERVER | Defender for Endpoint (DeviceProcessEvents) |
-| 3 | Backdoor account creation, then added to Administrators group | T1136, Create Account / T1098, Account Manipulation | Persistence / Privilege Escalation | WIN-SERVER (AD) | Defender for Identity (IdentityDirectoryEvents) |
-| 4a | LSASS memory dumping to harvest cached credentials | T1003.001, OS Credential Dumping: LSASS Memory | Credential Access | WIN-SERVER | Defender for Endpoint |
-| 4b | Kerberoasting, bulk service ticket requests for offline cracking | T1558.003, Kerberoasting | Credential Access | WIN-SERVER (AD) | Defender for Identity |
-| 5 | Lateral movement using harvested credentials (Pass-the-Hash) | T1550.002, Pass the Hash | Lateral Movement | WIN-11PRO | Defender for Endpoint + Identity |
-| 6 | Defense evasion, clearing logs / tampering with security tooling | T1070.001, Clear Windows Event Logs / T1562.001, Impair Defenses | Defense Evasion | WIN-SERVER | Defender for Endpoint |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Brute Force | T1110, Brute Force | Credential Access | testtarget decoy account on WIN-SERVER | Microsoft Sentinel, scheduled analytics rule on SecurityEvent (Event IDs 4625/4624) |
+| 2 | Suspicious PowerShell | T1059.001, PowerShell | Execution | WIN-SERVER | Defender for Endpoint (DeviceProcessEvents) |
+| 3 | Account Creation | T1136, Create Account | Persistence | WIN-SERVER (AD) | Defender for Endpoint, with Sentinel as backup on Event ID 4720 |
+| 4 | Log Clearing | T1070.001, Clear Windows Event Logs | Defense Evasion | WIN-SERVER | Defender for Endpoint and Microsoft Sentinel |
 
 ## Why This Structure
 
@@ -59,37 +57,17 @@ Safe by design. All attacks are run against a dedicated decoy account (testtarge
 ## Roadmap
 
 ### Stage 1, Initial Access: Brute Force
-Technique: T1110, Brute Force. Detection: Microsoft Sentinel (SecurityEvent, Event IDs 4625/4624). Status: Complete, full writeup below.
+Technique: T1110, Brute Force. Detection: Microsoft Sentinel (SecurityEvent, Event IDs 4625/4624).
+Ran a brute force from the Kali attacker host against the testtarget account on WIN-SERVER, produced a burst of failed logons followed by a success, and detected it with a scheduled Sentinel analytics rule. Triaged the incident, confirmed the account was compromised, contained it, and documented the root cause.
 
-### Stage 2, Execution: Suspicious PowerShell / LOLBins
+### Stage 2, Execution: Suspicious PowerShell
 Technique: T1059.001, PowerShell. Detection: Defender for Endpoint (DeviceProcessEvents).
+Execute a suspicious PowerShell command on WIN-SERVER post-compromise and trace the resulting Defender for Endpoint detection.
 
-Execute a suspicious PowerShell command (encoded command or download cradle) on WIN-SERVER post-compromise, and trace the resulting Defender for Endpoint alert.
+### Stage 3, Persistence: Account Creation
+Technique: T1136, Create Account. Detection: Defender for Endpoint, with Microsoft Sentinel as a backup on Event ID 4720.
+Used the compromised testtarget account to attempt remote creation of a backdoor account on the domain controller. Defender for Endpoint blocked the execution and Attack Disruption automatically contained the account. Triaged the incident, verified the account was never created, confirmed the scope of the automated response, and documented the root cause.
 
-### Stage 3, Persistence & Privilege Escalation: Backdoor Account
-Technique: T1136, Create Account / T1098, Account Manipulation. Detection: Defender for Identity (IdentityDirectoryEvents).
-
-Create a new AD user account and add it to the Administrators group, simulating an attacker establishing persistent, privileged access.
-
-### Stage 4a, Credential Access: LSASS Dumping
-Technique: T1003.001, OS Credential Dumping: LSASS Memory. Detection: Defender for Endpoint.
-
-Dump LSASS memory to harvest cached credentials, and trace the resulting Defender for Endpoint alert.
-
-### Stage 4b, Credential Access: Kerberoasting
-Technique: T1558.003, Kerberoasting. Detection: Defender for Identity.
-
-Request service tickets in bulk for offline cracking, and trace the resulting Defender for Identity alert.
-
-### Stage 5, Lateral Movement: Pass-the-Hash
-Technique: T1550.002, Pass the Hash. Detection: Defender for Endpoint and Identity.
-
-Use harvested credentials to authenticate from WIN-11PRO without the plaintext password, simulating an attacker spreading across the domain.
-
-### Stage 6, Defense Evasion: Log Tampering
-Technique: T1070.001, Clear Windows Event Logs / T1562.001, Impair Defenses. Detection: Defender for Endpoint.
-
-Attempt to clear event logs or disable security tooling to cover tracks, and trace the resulting alert.
-
-
-
+### Stage 4, Defense Evasion: Log Clearing
+Technique: T1070.001, Clear Windows Event Logs. Detection: Defender for Endpoint and Microsoft Sentinel.
+Cleared the Security event log on WIN-SERVER to simulate an attacker covering their tracks, which generated Event ID 1102. Both Defender for Endpoint and a Sentinel analytics rule detected it, and the platform correlated them into a single incident.
