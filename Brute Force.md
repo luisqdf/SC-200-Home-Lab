@@ -52,13 +52,13 @@ SecurityEvent
 <img width="1738" height="1270" alt="image" src="https://github.com/user-attachments/assets/64795c97-92fc-489d-bb37-16ac5842d8c9" />
 
 
-About 100 failures in a few seconds, all from one IP, then a success. That's automated, not a person mistyping. True positive — and the success means the account was compromised, not just hit.
+About 100 failures in a few seconds, all from one IP, then a success. That's automated, not a person mistyping. True positive, and the success means the account was compromised, not just hit.
 
 <!-- screenshot: raw logon events -->
 
 ## Source IP
 
-192.168.50.20 is a private address (192.168.0.0/16), so internal. That's worse, not better — the attacker is already inside the network. If it had been a public IP, I'd be checking reputation and geolocation instead.
+192.168.50.20 is a private address (192.168.0.0/16), so internal. That's worse, not better, the attacker is already inside the network. If it had been a public IP, I'd be checking reputation and geolocation instead.
 
 If it had been a public IP, I'd be checking its reputation and geolocation instead. Common sources for that:
 
@@ -90,11 +90,11 @@ SecurityEvent
 | summarize Machines = make_set(Computer), Events = count() by EventID
 ```
 
-Everything stayed on WIN-SERVER — no lateral movement.
+Everything stayed on WIN-SERVER, no lateral movement.
 
 <!-- screenshot: scope query result -->
 
-The bigger find came from enumeration: testtarget can reach the ADMIN$ and C$ shares, so it has local admin on the DC. That's the real problem — one guessed password on that account means full control of the domain controller.
+The bigger find came from enumeration: testtarget can reach the ADMIN$ and C$ shares, so it has local admin on the DC. That's the real problem , and one guessed password on that account means full control of the domain controller.
 
 ## Remediation
 
