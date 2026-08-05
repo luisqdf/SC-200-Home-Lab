@@ -46,11 +46,10 @@ WIN-SERVER (Domain Controller, soclab.local)
 
 ## Why This Structure
 
-Realistic ordering. This is the sequence a genuine attacker typically follows: get in, establish a foothold, escalate, harvest more credentials, spread, then cover their tracks.
+The four stages follow the sequence a real intrusion actually unfolds in: break in (Credential Access), run commands on the host (Execution), plant a way back in (Persistence), then wipe the evidence (Defense Evasion). Each stage is the logical next move after the one before it, which is what makes the chain read as a single story rather than four unrelated tests.
 
-Dual-sensor coverage. The chain includes both identity-layer attacks (brute force, Kerberoasting, account manipulation) and endpoint-layer attacks (PowerShell abuse, LSASS dumping, log tampering), showing why Defender for Endpoint and Defender for Identity are needed together rather than either alone.
+The chain is deliberately covered by two independent controls: the SIEM layer (Microsoft Sentinel, reading Windows security events forwarded from the domain controller) and the EDR layer (Microsoft Defender for Endpoint, reading live device telemetry). Several stages are caught by both at once and correlated into a single incident. That is the whole point: no single control is the entire defense, and when one layer is bypassed, the other still catches the activity.
 
-Safe by design. All attacks are run against a dedicated decoy account (testtarget), never against real lab accounts, and entirely within an isolated lab network with no production impact.
 
 ## Environment
 
